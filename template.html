@@ -1,0 +1,18 @@
+<template name="test_results">
+  <br/>
+  {{#each items}}
+    {{#if client}}
+      Client "{{clientName test client}}"
+    {{else}}
+      Server "{{clientName test server}}"
+    {{/if}}
+
+    {{#if error}}
+      - {{testName test}}-{{step}}, Error: {{message}}<br>
+    {{else}}
+      - {{testName test}}-{{step}} OK<br>
+    {{/if}}
+  {{else}}
+    No tests run yet!<br>
+  {{/each}}
+</template>
