@@ -20,11 +20,12 @@ Package.on_use(function (api) {
   //   ], ['client', 'server']);
 
   api.use('meteor-platform', ['client', 'server']);
+  api.use('bootstrap');
 
   // api.use(['deps'], 'client');
   // //api.use([], 'server');
   // //api.use(['localstorage', 'ejson'], 'client');
-  api.add_files('template.html', 'client');
+  api.add_files(['style.css', 'template.html'], 'client');
   api.add_files('testbed.js', ['client', 'server']);
   // api.add_files('groundDB.server.js', 'server');
 });

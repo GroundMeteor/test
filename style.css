@@ -1,0 +1,12 @@
+.topbar {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30px;
+  background-color: black;
+  color: gray;
+  padding-left: 20px;
+  padding-top: 10px;
+  font-size: 20px;
+  line-height: 20px;
+}

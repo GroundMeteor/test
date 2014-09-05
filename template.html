@@ -1,18 +1,78 @@
-<template name="test_results">
-  <br/>
-  {{#each items}}
-    {{#if client}}
-      Client "{{clientName test client}}"
-    {{else}}
-      Server "{{clientName test server}}"
-    {{/if}}
+<body>
+  {{> topbar}}
+ {{> test_results}}
+</body>
 
-    {{#if error}}
-      - {{testName test}}-{{step}}, Error: {{message}}<br>
+<template name="test_results">
+  <table class="table table-condensed">
+    {{#each tests}}
+      <tr class="active">
+        <td>
+          {{index}}: {{name}} -
+          <span style="color: green;">
+            {{success}}
+          </span>
+          /
+          <span style="color: red;">
+            {{failed}}
+          </span>
+          /
+          <span>
+            {{steps}}
+          </span>
+
+          {{#if done}}
+            <small>(done)</small>
+          {{else}}
+            <small>(waiting)</small>
+          {{/if}}
+
+          <br>
+          {{> listResults}}
+
+        </td>
+      </tr>
     {{else}}
-      - {{testName test}}-{{step}} OK<br>
-    {{/if}}
-  {{else}}
-    No tests run yet!<br>
-  {{/each}}
+      <tr>
+        <td>
+          No tests run yet!
+        </td>
+      </tr>
+    {{/each}}
+  </table>
+</template>
+
+<template name="listResults">
+    {{#each items}}
+      {{step}}:
+
+      {{#if client}}
+        C:"{{clientName test client}}"
+      {{else}}
+        S:"{{clientName test server}}"
+      {{/if}}
+
+      {{#if error}}
+        - 
+        <span style="color: red;">Error</span>:
+        {{message}}<br>
+        {{#if stack}}
+        <small style="color: silver;">{{stack}}</small><br>
+        {{/if}}
+      {{else}}
+        -
+        <span style="color: green;">Passed</span>
+        <br>
+      {{/if}}
+
+    {{else}}
+      No tests run yet!
+    {{/each}}  
+</template>
+
+
+<template name="topbar">
+  <div class="topbar">
+    <span class="title">Tests</span>
+  </div>
 </template>

@@ -11,6 +11,7 @@ if (Meteor.isClient) {
   var origin = window.location.origin;
 
   var testDb = new Meteor.Collection('_test_db', { connection: null });
+  var testStatusDb = new Meteor.Collection('_test_status_db', { connection: null });
 
 } else {
 
@@ -26,7 +27,22 @@ var tests = [];
 // Define the scope
 tabTest = {
   add: function(name, testFunction) {
-    tests.push({ name: name, f: testFunction, steps: [], clients: {} });
+    var index = tests.length;
+
+    tests.push({ name: name, f: testFunction, steps: [], clients: {}, index: index });
+
+    if (Meteor.isClient) {
+
+      testStatusDb.insert({
+        name: name,
+        steps: 0,
+        success: 0,
+        failed: 0,
+        done: false,
+        index: index 
+      });
+
+    }
   }
 };
 
@@ -111,6 +127,7 @@ if (Meteor.isClient) {
             completed: true,
             error: true,
             message: err.message,
+            stack: err.stack,
             test: data.test,
             step: data.step,
             client: clientName
@@ -125,6 +142,13 @@ if (Meteor.isClient) {
       console.log('Main got', data);
       
       if (data.completed) {
+
+        if (data.error) {
+          testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });          
+        } else {
+          testStatusDb.update({ index: data.test }, { $inc: { success: 1 } });
+        }
+
         testDb.insert(data);
         nextStep();
       }
@@ -136,52 +160,68 @@ var currentTest = 0;
 var currentStep = 0;
 
 var nextStep = function() {
-  // Get current test
-  var test = tests[currentTest];
 
-  if (currentStep < test.steps.length) {
+  Meteor.setTimeout(function() {
 
-    var target = test.steps[currentStep];
+    // Get current test
+    var test = tests[currentTest];
 
-    if (target.isClient) {
+    if (currentStep < test.steps.length) {
 
-      var iframe = target.iframe.contentWindow;
+      var target = test.steps[currentStep];
 
-      var msg = JSON.stringify({
-        run: true,
-        step: currentStep,
-        test: currentTest
-      });
+      if (target.isClient) {
+
+        var iframe = target.iframe.contentWindow;
+
+        var msg = JSON.stringify({
+          run: true,
+          step: currentStep,
+          test: currentTest
+        });
 
 
-      console.log('MESSAGE', msg, origin);
+        console.log('MESSAGE', msg, origin);
 
-      iframe.postMessage(msg, origin);
+        iframe.postMessage(msg, origin);
 
-    }
+      }
 
-    if (target.isServer) {
-      target.connection.call('runTest', currentTest, currentStep, function(error, data) {
-        if (error) {
-          console.log('Server test failed', error);
-        } else {
-          console.log('Server test OK', data);
-                // Main communication
-          console.log('Main got', data);
-          
-          if (data.completed) {
-            testDb.insert(data);
-            nextStep();
+      if (target.isServer) {
+        target.connection.call('runTest', currentTest, currentStep, function(error, data) {
+          if (error) {
+            console.log('Server test failed', error);
+            testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });
+          } else {
+            console.log('Server test OK', data);
+                  // Main communication
+            console.log('Main got', data);
+            testStatusDb.update({ index: data.test }, { $inc: { success: 1 } });
+            
+            if (data.completed) {
+              testDb.insert(data);
+              nextStep();
+            }
           }
-        }
-      });
+        });
+      }
+
+      currentStep++;
+
+    } else {
+      console.log('Test ended');
+      testStatusDb.update({ index: currentTest }, { $set: { done: true } });
+      currentTest++;
+
+      if (currentTest < tests.length) {
+        startTest(currentTest);
+      } else {
+
+        console.log('All tests ended');
+      }
     }
-
-    currentStep++;
-
-  } else {
-    console.log('Test ended');
-  }
+    
+  }, 0);
 
 };
 
@@ -244,6 +284,8 @@ var startTest = function(index) {
       return function(stepFunction) {
         // Store step
         test.steps.push(target);
+        if (Meteor.isClient)
+          testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
       };
     },
     Server: function(name, connection) {
@@ -266,25 +308,13 @@ var startTest = function(index) {
 
       return function(stepFunction) {
         test.steps.push(server);
+        if (Meteor.isClient)
+          testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
       };
     }
   });
 
   // Ok we are back and should be all set to start the test...
-};
-
-
-var mainTestApp = function() {
-  console.log('Main app');
-
-  eachTest(function(test, index) {
-
-    console.log('Got test: "' + test.name + '"');
-
-  });
-
-  // Start tests
-  startTest(0);
 };
 
 var clientTestApp = function(currentName) {
@@ -354,7 +384,7 @@ Meteor.startup(function() {
     if (isClient) {
       clientTestApp(clientName);
     } else {
-      mainTestApp();
+      startTest(0);
     }
   }
 
@@ -366,17 +396,22 @@ Meteor.startup(function() {
 
 if (Meteor.isClient) {
 
-  Template.test_results.clientName = function(t, c) {
+  Template.listResults.clientName = function(t, c) {
     return tests[t].clients[c].name;
   };
 
-  Template.test_results.testName = function(n) {
+  Template.listResults.testName = function(n) {
     return tests[n].name;
   };
 
-  Template.test_results.items = function() {
-    return testDb.find();
+  Template.listResults.items = function() {
+    return testDb.find({ test: this.index });
   };
+
+  Template.test_results.tests = function() {
+    return testStatusDb.find();
+  };
+
 
 }
 
@@ -410,6 +445,7 @@ if (Meteor.isServer) {
         completed: true,
         error: true,
         message: err.message,
+        stack: err.stack,
         test: test,
         step: step,
         server: serverName
