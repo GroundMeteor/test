@@ -1,7 +1,7 @@
 Package.describe({
   name: "ground:test",
   version: "0.0.1",
-  summary: "Run tests on multiple clients and server",
+  summary: "Run sync tests on multiple clients and the server",
   // git: "https://github.com/GroundMeteor/Meteor-GroundDB.git"
 });
 
