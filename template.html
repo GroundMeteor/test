@@ -8,7 +8,7 @@
     {{#each tests}}
       <tr class="active">
         <td>
-          {{index}}: {{name}} -
+          {{index}}: <b>{{name}}</b> -
           <span style="color: green;">
             {{success}}
           </span>
@@ -60,7 +60,7 @@
 
       -
       
-      <b style="border-top: 1px dashed silver;">{{title}}</b>
+      <span style="border-top: 1px dashed silver;">{{title}}</span>
       <br>
 
       {{#if error}}
