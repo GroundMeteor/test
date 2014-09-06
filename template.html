@@ -44,23 +44,32 @@
 
 <template name="listResults">
     {{#each items}}
+      {{#if client}}
+        C:
+      {{else}}
+        S:
+      {{/if}}
+      
       {{step}}:
 
       {{#if client}}
-        C:"{{clientName test client}}"
+        {{clientName test client}}
       {{else}}
-        S:"{{clientName test server}}"
+        {{clientName test server}}
       {{/if}}
 
+      -
+      
+      <b style="border-top: 1px dashed silver;">{{title}}</b>
+      <br>
+
       {{#if error}}
-        - 
         <span style="color: red;">Error</span>:
         {{message}}<br>
         {{#if stack}}
         <small style="color: silver;">{{stack}}</small><br>
         {{/if}}
       {{else}}
-        -
         <span style="color: green;">Passed</span>
         <br>
       {{/if}}

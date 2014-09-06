@@ -85,7 +85,10 @@ var resetClients = function() {
 };
 
 var runAsyncTask = function(test, step, callback) {
-  var f = tests[test].steps[step];
+  var thisStep = tests[test].steps[step];
+
+  var f = thisStep.f;
+  var title = thisStep.title;
 
   try {    
     // Run the test function on the client
@@ -98,7 +101,8 @@ var runAsyncTask = function(test, step, callback) {
         test: test,
         step: step,
         server: serverName,
-        client: clientName
+        client: clientName,
+        title: title
       };
 
       // Call parent to report status about test run
@@ -116,7 +120,8 @@ var runAsyncTask = function(test, step, callback) {
       test: test,
       step: step,
       server: serverName,
-      client: clientName
+      client: clientName,
+      title: title
     };        
     // Call parent to report status about test run
     callback(null, msg);
@@ -165,7 +170,7 @@ if (Meteor.isClient) {
         runAsyncTask(data.test, data.step, function(err, msg) {
           debug && console.log('Client post', msg);
           // Call parent to report status about test run
-          parent.postMessage(msg, origin);
+          parent.postMessage(JSON.stringify(msg), origin);
         });
 
       }
@@ -173,7 +178,7 @@ if (Meteor.isClient) {
     } else {
       // Main communication
       debug && console.log('Main got from client', data);
-      gotTestResult(data);
+      gotTestResult(JSON.parse(data));
     }
   }, false);
 }
@@ -190,7 +195,9 @@ var nextStep = function() {
 
     if (currentStep < test.steps.length) {
 
-      var target = test.steps[currentStep];
+      var thisStep = test.steps[currentStep];
+
+      var target = thisStep.target;
 
       if (target.isClient) {
 
@@ -212,6 +219,7 @@ var nextStep = function() {
       if (target.isServer) {
         var test = currentTest;
         var step = currentStep;
+        var title = thisStep.title;
         target.connection.call('runTest', test, step, function(error, data) {
           if (error) {
             data = {
@@ -221,7 +229,8 @@ var nextStep = function() {
               stack: error.stack,
               test: test,
               step: step,
-              server: target.name              
+              server: target.name,
+              title: title         
             };            
           }
 
@@ -304,9 +313,9 @@ var startTest = function(index) {
       var target = test.clients[name];
 
       // Return the step register function
-      return function(stepFunction) {
+      return function(title, stepFunction) {
         // Store step
-        test.steps.push(target);
+        test.steps.push({ title: title, target: target });
         if (Meteor.isClient)
           testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
       };
@@ -329,8 +338,8 @@ var startTest = function(index) {
 
       var server = test.clients[name];
 
-      return function(stepFunction) {
-        test.steps.push(server);
+      return function(title, stepFunction) {
+        test.steps.push({ title: title, target: server });
         if (Meteor.isClient)
           testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
       };
@@ -346,20 +355,20 @@ var clientTestApp = function(currentName) {
   eachTest(function(test, index) {
     test.f.apply({
       Client: function(name) {
-        return function(stepFunction) {
+        return function(title, stepFunction) {
           if (name == currentName) {
             // Ok this step should run on this client
-            test.steps.push(stepFunction);
+            test.steps.push({ title: title, f: stepFunction });
           } else {
             // Noop, another client is going for this...
-            test.steps.push(noop);
+            test.steps.push({ title: title, f: noop });
           }
         };
       },
       Server: function(name) {
-        return function(stepFunction) {        
+        return function(title, stepFunction) {        
           // Noop, server is going for this...
-          test.steps.push(noop);
+          test.steps.push({ title: title, f: noop });
         }
       }
     });
@@ -376,22 +385,22 @@ var serverTestApp = function(currentName) {
   eachTest(function(test, index) {
     test.f.apply({
       Client: function(name) {
-        return function(stepFunction) {        
+        return function(title, stepFunction) {        
           // Noop, clients is going for this...
-          test.steps.push(noop);        
+          test.steps.push({ title: title, f: noop });        
         };
       },
       Server: function(name) {
         // Pretty name
         name = name || defaultServerName;
 
-        return function(stepFunction) {
+        return function(title, stepFunction) {
           if (name == currentName) {
             // Ok this step should run on this server
-            test.steps.push(stepFunction);
+            test.steps.push({ title: title, f: stepFunction });
           } else {
             // Noop, another server is going for this...
-            test.steps.push(noop);
+            test.steps.push({ title: title, f: noop });
           }
         };
       }
