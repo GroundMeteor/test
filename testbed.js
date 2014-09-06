@@ -163,7 +163,7 @@ if (Meteor.isClient) {
       if (data.run) {
 
         runAsyncTask(data.test, data.step, function(err, msg) {
-          console.log('Client post', msg);
+          debug && console.log('Client post', msg);
           // Call parent to report status about test run
           parent.postMessage(msg, origin);
         });
