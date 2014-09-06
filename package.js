@@ -6,9 +6,15 @@ Package.describe({
 });
 
 Package.on_use(function (api) {
-  api.versionsFrom && api.versionsFrom('METEOR@0.9.1');
+  if (api.versionsFrom) {
+    api.versionsFrom('METEOR@0.9.1');
+    api.use('meteor-platform', ['client', 'server']);
 
-  api.export('tabTest');
+  } else {
+    api.use('standard-app-packages', ['client', 'server']);
+  }
+
+  api.export('GroundTest');
   // api.export && api.export('_gDB', ['client', 'server'], {testOnly: true});
   // api.use([
   //   'meteor',
@@ -19,7 +25,6 @@ Package.on_use(function (api) {
   //   'ejson-minimax'
   //   ], ['client', 'server']);
 
-  api.use('meteor-platform', ['client', 'server']);
   api.use('bootstrap');
 
   // api.use(['deps'], 'client');

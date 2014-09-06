@@ -1,7 +1,9 @@
+var debug = true;
+
 if (Meteor.isClient) {
 
   if (typeof window.location == 'undefined')
-    throw new Error('Browser is not compatible with tabTest - no "window.location"');
+    throw new Error('Browser is not compatible with GroundTest - no "window.location"');
 
 
   // / == main test, /test/A == A
@@ -15,17 +17,17 @@ if (Meteor.isClient) {
 
 } else {
 
-  var serverName = 'local';
+  var serverName = 'L';
 
 }
 
-var defaultServerName = 'local';
+var defaultServerName = 'L';
 
 // Container for all the tests
 var tests = [];
 
 // Define the scope
-tabTest = {
+GroundTest = {
   add: function(name, testFunction) {
     var index = tests.length;
 
@@ -82,76 +84,96 @@ var resetClients = function() {
   waiting = 0;
 };
 
+var runAsyncTask = function(test, step, callback) {
+  var f = tests[test].steps[step];
+
+  try {    
+    // Run the test function on the client
+    f(function(txt) {
+
+      var msg = {
+        completed: true,
+        error: !!txt,
+        message: txt,
+        test: test,
+        step: step,
+        server: serverName,
+        client: clientName
+      };
+
+      // Call parent to report status about test run
+      callback(null, msg);
+    });
+
+  } catch(err) {
+
+    // On error send error
+    var msg = {
+      completed: true,
+      error: true,
+      message: err.message,
+      stack: err.stack,
+      test: test,
+      step: step,
+      server: serverName,
+      client: clientName
+    };        
+    // Call parent to report status about test run
+    callback(null, msg);
+  }
+};
+
+var gotTestResult = function(data) {
+  // Main communication
+  debug && console.log('Main got', data);
+  
+  if (data.completed) {
+
+    if (data.error) {
+      testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });          
+    } else {
+      testStatusDb.update({ index: data.test }, { $inc: { success: 1 } });
+    }
+
+    testDb.insert(data);
+    nextStep();
+  }
+};
+
 if (Meteor.isClient) {
 
   window.addEventListener("message", function(event) {
     // Only this origin...
     if (event.origin !== origin)
-      throw new Error('tabTest requires same origin');
+      throw new Error('GroundTest requires same origin');
+
+    // We always expect data object
+    var data = event.data;
 
     // We dont care about empty data
-    if (!event.data)
+    if (!data)
       return;
 
-    // We always expect json data
-    var data = JSON.parse(event.data);
+    debug && console.log('test', data.test, 'step', data.step);
 
     // event.data event.origin event.source
     if (isClient) {
       // Client communication
-      console.log('Client "' + clientName + '" got', data);
+      debug && console.log('Client "' + clientName + '" got', data);
       if (data.run) {
-        var f = tests[data.test].steps[data.step];
 
-        try {
-
-          // Run the test function on the client
-          f(function(txt) {
-            var msg = JSON.stringify({
-              completed: true,
-              error: !!txt,
-              message: txt,
-              test: data.test,
-              step: data.step,
-              client: clientName
-            });
-
-            // Call parent to report status about test run
-            parent.postMessage(msg, origin);
-          });
-
-        } catch(err) {
-
-          // On error send error
-          var msg = JSON.stringify({
-            completed: true,
-            error: true,
-            message: err.message,
-            stack: err.stack,
-            test: data.test,
-            step: data.step,
-            client: clientName
-          });        
+        runAsyncTask(data.test, data.step, function(err, msg) {
+          console.log('Client post', msg);
           // Call parent to report status about test run
           parent.postMessage(msg, origin);
-        }
+        });
+
       }
 
     } else {
       // Main communication
-      console.log('Main got', data);
-      
-      if (data.completed) {
-
-        if (data.error) {
-          testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });          
-        } else {
-          testStatusDb.update({ index: data.test }, { $inc: { success: 1 } });
-        }
-
-        testDb.insert(data);
-        nextStep();
-      }
+      debug && console.log('Main got from client', data);
+      gotTestResult(data);
     }
   }, false);
 }
@@ -174,42 +196,43 @@ var nextStep = function() {
 
         var iframe = target.iframe.contentWindow;
 
-        var msg = JSON.stringify({
+        var msg = {
           run: true,
           step: currentStep,
           test: currentTest
-        });
+        };
 
 
-        console.log('MESSAGE', msg, origin);
+        debug && console.log('MESSAGE', msg, origin);
 
         iframe.postMessage(msg, origin);
 
       }
 
       if (target.isServer) {
-        target.connection.call('runTest', currentTest, currentStep, function(error, data) {
+        var test = currentTest;
+        var step = currentStep;
+        target.connection.call('runTest', test, step, function(error, data) {
           if (error) {
-            console.log('Server test failed', error);
-            testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });
-          } else {
-            console.log('Server test OK', data);
-                  // Main communication
-            console.log('Main got', data);
-            testStatusDb.update({ index: data.test }, { $inc: { success: 1 } });
-            
-            if (data.completed) {
-              testDb.insert(data);
-              nextStep();
-            }
+            data = {
+              completed: true,
+              error: true,
+              message: error.message,
+              stack: error.stack,
+              test: test,
+              step: step,
+              server: target.name              
+            };            
           }
+
+          gotTestResult(data);
         });
       }
 
       currentStep++;
 
     } else {
-      console.log('Test ended');
+      debug && console.log('Test ended');
       testStatusDb.update({ index: currentTest }, { $set: { done: true } });
       currentTest++;
 
@@ -217,7 +240,7 @@ var nextStep = function() {
         startTest(currentTest);
       } else {
 
-        console.log('All tests ended');
+        debug && console.log('All tests ended');
       }
     }
     
@@ -260,7 +283,7 @@ var startTest = function(index) {
 
         iframe.addEventListener('load', function() {
           client.loaded = true;
-          console.log('Client', name, 'loaded');
+          debug && console.log('Client', name, 'loaded');
 
           // Wait a bit
           Meteor.setTimeout(function() {
@@ -273,7 +296,7 @@ var startTest = function(index) {
         });
 
         iframe.src = 'test/' + name;
-        console.log('Added test/'+name);
+        debug && console.log('Added test/'+name);
 
         test.clients[name] = client;
       }
@@ -300,7 +323,7 @@ var startTest = function(index) {
           loaded: true,
         };
 
-        console.log('Added test', name);
+        debug && console.log('Added test', name);
         test.clients[name] = server;
       }
 
@@ -318,7 +341,7 @@ var startTest = function(index) {
 };
 
 var clientTestApp = function(currentName) {
-  console.log('Client test app "' + currentName + '"');
+  debug && console.log('Client test app "' + currentName + '"');
 
   eachTest(function(test, index) {
     test.f.apply({
@@ -348,7 +371,7 @@ var serverTestApp = function(currentName) {
   // Make sure we have a pretty name
   currentName = currentName || defaultServerName;
 
-  console.log('Server test app "' + currentName + '"');
+  debug && console.log('Server test app "' + currentName + '"');
 
   eachTest(function(test, index) {
     test.f.apply({
@@ -418,49 +441,12 @@ if (Meteor.isClient) {
 
 if (Meteor.isServer) {
 
-  var runAsyncTask = function(test, step, callback) {
-    var f = tests[test].steps[step];
-
-    try {    
-      // Run the test function on the client
-      f(function(txt) {
-
-        var msg = {
-          completed: true,
-          error: !!txt,
-          message: txt,
-          test: test,
-          step: step,
-          server: serverName
-        };
-
-        // Call parent to report status about test run
-        callback(null, msg);
-      });
-
-    } catch(err) {
-
-      // On error send error
-      var msg = {
-        completed: true,
-        error: true,
-        message: err.message,
-        stack: err.stack,
-        test: test,
-        step: step,
-        server: serverName
-      };        
-      // Call parent to report status about test run
-      callback(null, msg);
-    }
-  };
-
   var runSyncTask = Meteor._wrapAsync(runAsyncTask);
 
   Meteor.methods({
     'runTest': function(test, step) {
 
-      console.log('Run test', test, step);
+      debug && console.log('Run test', test, step);
       return runSyncTask(test, step);
     }
   });
