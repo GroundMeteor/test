@@ -63,23 +63,20 @@ var eachTest = function(f) {
 // wait counter
 var waiting = 0;
 
-var resetClients = function() {
-  eachTest(function(test, index) {
-    // Iterate over children
-    for (var i = 0; i < test.children.length; i++) {
-      // XXX: remove event listeners...
+var resetTest = function(index) {
+  var test = tests[index];
+  // Iterate over children
+  for (var key in test.clients) {
+    var client = test.clients[key];
 
+    var iframe = client.iframe;
+    if (iframe) {
+      debug && console.log('Remove iframe:', iframe);    
       // Clean up dom
-      document.body.removeChild(test.children[i]);
-
-      // Clean up memory
-      test.children[i] = null;
-      delete test.children[i];
+      document.body.removeChild(iframe);
     }
-
-    // Reset array
-    test.children = [];
-  });
+    
+  }
 
   waiting = 0;
 };
@@ -243,12 +240,13 @@ var nextStep = function() {
     } else {
       debug && console.log('Test ended');
       testStatusDb.update({ index: currentTest }, { $set: { done: true } });
+
+      resetTest(currentTest);
       currentTest++;
 
       if (currentTest < tests.length) {
         startTest(currentTest);
       } else {
-
         debug && console.log('All tests ended');
       }
     }
