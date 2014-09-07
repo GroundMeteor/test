@@ -26,6 +26,11 @@ var defaultServerName = 'L';
 // Container for all the tests
 var tests = [];
 
+var testArgs = function(where, title, func) {
+  if (title !== ''+title) throw new Error(where + ' test step needs name as first argument');
+  if (typeof func !== 'function') throw new Error(where + ' test step needs function as second argument');
+};
+
 // Define the scope
 GroundTest = {
   add: function(name, testFunction) {
@@ -41,11 +46,15 @@ GroundTest = {
         success: 0,
         failed: 0,
         done: false,
-        index: index 
+        index: index,
+        collapsed: true
       });
 
     }
-  }
+  },
+  isClient: isClient,
+  isServer: Meteor.isServer,
+  isMain: Meteor.isClient && !isClient
 };
 
 var noop = function(f) {};
@@ -312,6 +321,8 @@ var startTest = function(index) {
 
       // Return the step register function
       return function(title, stepFunction) {
+        testArgs('Client', title, stepFunction);
+
         // Store step
         test.steps.push({ title: title, target: target });
         if (Meteor.isClient)
@@ -337,6 +348,8 @@ var startTest = function(index) {
       var server = test.clients[name];
 
       return function(title, stepFunction) {
+        testArgs('Server', title, stepFunction);
+
         test.steps.push({ title: title, target: server });
         if (Meteor.isClient)
           testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
@@ -354,6 +367,8 @@ var clientTestApp = function(currentName) {
     test.f.apply({
       Client: function(name) {
         return function(title, stepFunction) {
+          testArgs('Client', title, stepFunction);
+
           if (name == currentName) {
             // Ok this step should run on this client
             test.steps.push({ title: title, f: stepFunction });
@@ -364,7 +379,9 @@ var clientTestApp = function(currentName) {
         };
       },
       Server: function(name) {
-        return function(title, stepFunction) {        
+        return function(title, stepFunction) {
+          testArgs('Server', title, stepFunction);
+
           // Noop, server is going for this...
           test.steps.push({ title: title, f: noop });
         }
@@ -384,6 +401,7 @@ var serverTestApp = function(currentName) {
     test.f.apply({
       Client: function(name) {
         return function(title, stepFunction) {        
+          testArgs('Client', title, stepFunction);
           // Noop, clients is going for this...
           test.steps.push({ title: title, f: noop });        
         };
@@ -393,6 +411,8 @@ var serverTestApp = function(currentName) {
         name = name || defaultServerName;
 
         return function(title, stepFunction) {
+          testArgs('Server', title, stepFunction);
+          
           if (name == currentName) {
             // Ok this step should run on this server
             test.steps.push({ title: title, f: stepFunction });
@@ -426,6 +446,19 @@ Meteor.startup(function() {
 
 if (Meteor.isClient) {
 
+  Template.test_results.events({
+    'click .btnUncollapse': function() {
+      testStatusDb.update({ _id: this._id }, { $set: { collapsed: false } });
+    },
+    'click .btnCollapse': function() {
+      testStatusDb.update({ _id: this._id }, { $set: { collapsed: true } });
+    },
+  });
+
+  Template.test_results.collapseStyle = function() {
+    return (this.collapsed)? { style: 'display:none;' }:{ style: 'display: block;'};
+  };
+
   Template.listResults.clientName = function(t, c) {
     return tests[t].clients[c].name;
   };
@@ -439,9 +472,45 @@ if (Meteor.isClient) {
   };
 
   Template.test_results.tests = function() {
-    return testStatusDb.find();
+    return testStatusDb.find({});
   };
 
+
+  Template.progress.successWidth = function() {
+    return Math.round(100 * this.success / this.total);
+  };
+
+  Template.topbar.totalTests = function() {
+    return testStatusDb.find({}).count();
+  };
+
+  Template.topbar.totalDone = function() {
+    return testStatusDb.find({ done: true }).count();
+  };  
+
+  Template.topbar.success = function() {
+    var total = 0;
+    testStatusDb.find({}).forEach(function(test) {
+      total += test.success;
+    });
+    return total;    
+  };
+
+  Template.topbar.failed = function() {
+    var total = 0;
+    testStatusDb.find({}).forEach(function(test) {
+      total += test.failed;
+    });
+    return total;    
+  };
+
+  Template.topbar.total = function() {
+    var total = 0;
+    testStatusDb.find({}).forEach(function(test) {
+      total += test.steps;
+    });
+    return total;    
+  };
 
 }
 

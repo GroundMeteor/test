@@ -4,9 +4,35 @@
   top: 0;
   height: 30px;
   background-color: black;
-  color: gray;
+  color: white;
   padding-left: 20px;
   padding-top: 10px;
   font-size: 20px;
   line-height: 20px;
+  margin-bottom: 20px;
+}
+
+.progressContainer {
+  position: absolute;
+  border: 0;
+  display: inline-block;
+  font-size: 10px;
+  color: black;
+  text-align: center;
+  left: 0;
+  right: 0;
+  top: 40px;
+  height: 4px;
+}
+
+.progressSucces {
+  display: inline-block;
+  float: left;
+  background-color: green;
+  height: 100%;
+
+  -webkit-transition: all 1s;
+  -moz-transition: all 1s;
+  -o-transition: all 1s;
+  transition: all 1s;  
 }

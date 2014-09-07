@@ -8,7 +8,19 @@
     {{#each tests}}
       <tr class="active">
         <td>
-          {{index}}: <b>{{name}}</b> -
+          {{#if collapsed}}
+            <button class="btnUncollapse" style="font-size: 10px; width: 30px;">V</button>
+          {{else}}
+            <button class="btnCollapse" style="font-size: 15px; width: 30px;">^</button>
+          {{/if}}
+          {{index}}:
+
+          {{#if failed}}
+            <b style="color: red;">{{name}}</b>
+          {{else}}
+            <b>{{name}}</b>
+          {{/if}}
+          -
           <span style="color: green;">
             {{success}}
           </span>
@@ -28,7 +40,9 @@
           {{/if}}
 
           <br>
-          {{> listResults}}
+          <div {{collapseStyle}}>
+            {{> listResults}}
+          </div>
 
         </td>
       </tr>
@@ -83,5 +97,20 @@
 <template name="topbar">
   <div class="topbar">
     <span class="title">Tests</span>
+
+    <span style="color: green;">{{success}}</span>
+    /
+    <span style="color: red;">{{failed}}</span>
+    /
+    <span style="color: white;">{{total}}</span>
+  </div>
+
+  {{> progress height=1 width=200 success=totalDone total=totalTests}}  
+</template>
+
+<template name="progress">
+  <div class="progressContainer">
+    <div class="progressSucces" style="width: {{successWidth}}%;">
+    </div>
   </div>
 </template>
