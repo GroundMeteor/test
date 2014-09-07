@@ -105,12 +105,12 @@
     <span style="color: white;">{{total}}</span>
   </div>
 
-  {{> progress height=1 width=200 success=totalDone total=totalTests}}  
+  {{> progress height=1 width=200 progress=percentDone}}  
 </template>
 
 <template name="progress">
   <div class="progressContainer">
-    <div class="progressSucces" style="width: {{successWidth}}%;">
+    <div class="progressSucces" style="width: {{progress}}%;">
     </div>
   </div>
 </template>

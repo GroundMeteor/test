@@ -476,16 +476,21 @@ if (Meteor.isClient) {
   };
 
 
-  Template.progress.successWidth = function() {
-    return Math.round(100 * this.success / this.total);
-  };
+  Template.topbar.percentDone = function() {
+    var testCount = 0;
+    var inProgress = 0;
 
-  Template.topbar.totalTests = function() {
-    return testStatusDb.find({}).count();
-  };
+    testStatusDb.find({}).forEach(function(test) {
 
-  Template.topbar.totalDone = function() {
-    return testStatusDb.find({ done: true }).count();
+      if (test.steps) inProgress = testCount + ((test.success + test.failed) / test.steps);
+
+      testCount++;
+    });    
+
+
+    var result = Math.round(100 * inProgress / testCount);
+
+    return result;
   };  
 
   Template.topbar.success = function() {
