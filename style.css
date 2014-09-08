@@ -12,6 +12,10 @@
   margin-bottom: 20px;
 }
 
+.result-list {
+  margin-left: 25px;
+}
+
 .progressContainer {
   position: absolute;
   border: 0;
@@ -35,4 +39,16 @@
   -moz-transition: all 1s;
   -o-transition: all 1s;
   transition: all 1s;  
+}
+
+.btnUncollapse, .btnCollapse {
+  font-size: 20px;
+  width: 30px;
+  padding-right: 10px;
+  cursor: pointer;
+}
+
+.btnCollapse {
+  padding-left: 2px;
+  padding-right: 12px;
 }

@@ -9,9 +9,9 @@
       <tr class="active">
         <td>
           {{#if collapsed}}
-            <button class="btnUncollapse" style="font-size: 10px; width: 30px;">V</button>
+            <span class="btnUncollapse">+</span>
           {{else}}
-            <button class="btnCollapse" style="font-size: 15px; width: 30px;">^</button>
+            <span class="btnCollapse">-</span>
           {{/if}}
           {{index}}:
 
@@ -40,7 +40,7 @@
           {{/if}}
 
           <br>
-          <div {{collapseStyle}}>
+          <div {{collapseStyle}} class="result-list">
             {{> listResults}}
           </div>
 
