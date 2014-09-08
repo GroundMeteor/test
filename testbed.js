@@ -193,7 +193,6 @@ var currentTest = 0;
 var currentStep = 0;
 
 var nextStep = function() {
-
   Meteor.setTimeout(function() {
 
     // Get current test
@@ -202,6 +201,8 @@ var nextStep = function() {
     if (currentStep < test.steps.length) {
 
       var thisStep = test.steps[currentStep];
+
+      console.debug('***** STEP', currentStep, '"' + thisStep.title + '"');
 
       var target = thisStep.target;
 
@@ -256,7 +257,11 @@ var nextStep = function() {
       if (currentTest < tests.length) {
         startTest(currentTest);
       } else {
-        debug && console.log('All tests ended');
+
+        console.debug('////////////////////////////////////////////////////////////////////////////////');
+        console.debug('                                 ALL TESTS ENDED');
+        console.debug('////////////////////////////////////////////////////////////////////////////////');
+
       }
     }
     
@@ -271,6 +276,10 @@ var startTest = function(index) {
 
   // Helper
   var test = tests[currentTest];
+
+  console.debug('////////////////////////////////////////////////////////////////////////////////');
+  console.debug('START TEST', index, '"' + test.name + '"');
+  console.debug('////////////////////////////////////////////////////////////////////////////////');
 
   // Count the steps in the test...
   test.f.apply({
