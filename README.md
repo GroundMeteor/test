@@ -15,89 +15,151 @@ You create a qa meteor app, add ground:test and start writing your tests in the 
 
 Create a file "test1.js":
 ```js
-if (Meteor.isServer) {
-  db = new Meteor.Collection('test');
-}
+GroundTest.add('Test common online insert/update/remove', function() {
 
-if (Meteor.isClient) {
-  localStorage.clear();
-}
-
-GroundTest.add('Inserts', function() {
-
-  // Insert iframe 
   var clientA = new this.Client('A');
+
   var clientB = new this.Client('B');
 
-  // Use this server
   var server = new this.Server();
 
   // Step 0
-  server('Server removes all data in test collection', function(complete) {
-    // Empty test db
-    db.remove();
-
-    complete(); 
+  server('Clean db', function(complete) {
+    db.remove({});
+    complete();
   });
 
   // Step 1
-  clientA('Rig GroundDB Empty and inserts doc', function(complete) {
+  clientA('Create document on the client', function(complete) {
     db = new GroundDB('test');
 
-    db.find({}).forEach(function(doc) {
-      db.remove({ _id: doc._id });
-    });
-
-    db.insert({ foo: 'bar' }, function(err) {
-      complete();
+    db.insert({ test: 2, foo: 'test_new_document', bar: 'online' }, function(err, id) {
+      if (err) {
+        complete(err.message);
+      } else {
+        complete();
+      }
     });
   });
 
-  // step 2
-  clientB('Rig GroundDB, findOne doc then disconnect', function(complete) {
-    db = new GroundDB('test');
+  // Step 2
+  server('Verify created document', function(complete) {
+    var doc = db.findOne({ test: 2 });
 
-    var item = db.findOne({});
+    if (doc) {
+      
+      if (doc.foo == 'test_new_document' && doc.bar == 'online') {
+        complete();
+      } else {
+        complete('Document is found but contains invalid data');
+      }
 
-    Meteor.disconnect();
-
-    if (!item || item.foo !== 'bar')
-      complete('Could not find item with foo==bar')
-    else
-      complete();
-
+    } else {
+      complete('Could not find any documents matching');
+    }
   });
 
   // Step 3
-  clientA('findOne doc, update this and wait a sec', function(complete) {
+  clientB('Verify created document', function(complete) {
+    db = new GroundDB('test');
 
-    var item = db.findOne({});
+    var doc = db.findOne({ test: 2 });
 
-    db.update({ _id: item._id }, { foo: 'foo' }, function(err) {
-      Meteor.setTimeout(function() {
+    if (doc) {
+      
+      if (doc.foo == 'test_new_document' && doc.bar == 'online') {
         complete();
-      }, 1000);
-    });
+      } else {
+        complete('Document is found but contains invalid data');
+      }
 
+    } else {
+      complete('Could not find any documents matching');
+    }
   });
 
 
-  // step 4
-  clientB('check offline, then check if tab sync works', function(complete) {
-    var connection = Meteor.connection.status();
+  // Step 4
+  clientA('Update document on the client', function(complete) {
+    var doc = db.findOne({ test: 2 });
 
-    if (connection.status == 'connected') {
-      complete('Should not be connected...');
-      return;
+    db.update({ _id: doc._id }, { $set: { foo: 'test_update_document' } }, function(err) {
+      if (err) {
+        complete(err.message);
+      } else {
+        complete();
+      }
+    });
+  });
+
+  // Step 5
+  server('Verify updated document', function(complete) {
+    var doc = db.findOne({ test: 2 });
+
+    if (doc) {
+      
+      if (doc.foo == 'test_update_document' && doc.bar == 'online') {
+        complete();
+      } else {
+        complete('Document is found but contains invalid data');
+      }
+
+    } else {
+      complete('Could not find any documents matching');
     }
+  });
 
-    var item = db.findOne({});
+  // Step 6
+  clientB('Verify updated document', function(complete) {
+    var doc = db.findOne({ test: 2 });
 
-    if (!item || item.foo !== 'foo')
-      complete('Could not find item with foo==foo tabs did not sync?')
-    else
+    if (doc) {
+      
+      if (doc.foo == 'test_update_document' && doc.bar == 'online') {
+        complete();
+      } else {
+        complete('Document is found but contains invalid data');
+      }
+
+    } else {
+      complete('Could not find any documents matching');
+    }
+  });
+
+
+  // Step 6
+  clientA('Remove document on the client', function(complete) {
+    var doc = db.findOne({ test: 2 });
+
+    db.remove({ _id: doc._id }, function(err) {
+      if (err) {
+        complete(err.message);
+      } else {
+        complete();
+      }      
+    });
+  });
+
+  // Step 7
+  server('Verify removed document', function(complete) {
+    var doc = db.findOne({ test: 2 });
+
+    if (doc) {
+      complete('Document not removed');
+    } else {
       complete();
+    }
+  });
 
+  // Step 8
+  clientB('Verify removed document', function(complete) {
+    var doc = db.findOne({ test: 2 });
+
+    if (doc) {
+      complete('Document not removed');
+    } else {
+      complete();
+    }
   });
 
 });
