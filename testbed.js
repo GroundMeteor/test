@@ -1,4 +1,5 @@
 var debug = false;
+var serverName, clientName;
 
 if (Meteor.isClient) {
 
@@ -8,7 +9,7 @@ if (Meteor.isClient) {
 
   // / == main test, /test/A == A
   var pathName = window.location && window.location.pathname;
-  var clientName = pathName.substring(6);
+  clientName = pathName.substring(6);
   var isClient = /^\/test\//.test(pathName);
   var origin = window.location.origin;
 
@@ -17,7 +18,7 @@ if (Meteor.isClient) {
 
 } else {
 
-  var serverName = 'L';
+  serverName = 'L';
 
 }
 
@@ -54,7 +55,9 @@ GroundTest = {
   },
   isClient: isClient,
   isServer: Meteor.isServer,
-  isMain: Meteor.isClient && !isClient
+  isMain: Meteor.isClient && !isClient,
+  clientName: clientName,
+  serverName: serverName
 };
 
 var noop = function(f) {};
