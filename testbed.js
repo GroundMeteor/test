@@ -1,5 +1,5 @@
 var debug = false;
-var serverName, clientName;
+var serverName, clientName, testIndex;
 
 if (Meteor.isClient) {
 
@@ -9,8 +9,16 @@ if (Meteor.isClient) {
 
   // / == main test, /test/A == A
   var pathName = window.location && window.location.pathname;
-  clientName = pathName.substring(6);
-  var isClient = /^\/test\//.test(pathName);
+  //var isClient = /^\/test\//.test(pathName);
+
+  var parsedPath = pathName.split('/');
+  // ["", "test", "0", "foo"]
+
+  var isClient = (parsedPath[1] === 'test');
+
+  testIndex = parsedPath[2];
+  clientName = parsedPath[3];
+
   var origin = window.location.origin;
 
   var testDb = new Meteor.Collection('_test_db', { connection: null });
@@ -57,8 +65,30 @@ GroundTest = {
   isServer: Meteor.isServer,
   isMain: Meteor.isClient && !isClient,
   clientName: clientName,
-  serverName: serverName
+  serverName: serverName,
+  log: function(/* arguments */) {
+
+    if (isClient) {
+      
+      var message = _.toArray(arguments).join(' ');
+      
+      Meteor.call('clientConsoleLog', clientName, testIndex, message);
+
+      parent.postMessage(JSON.stringify({
+        log: true,
+        test: testIndex,
+        client: clientName,
+        message: message
+      }), origin);      
+    }
+    
+  }
 };
+
+
+if (isClient) {
+  GroundTest.log('ONLINE');
+}
 
 var noop = function(f) {};
 
@@ -83,6 +113,7 @@ var resetTest = function(index) {
 
     var iframe = client.iframe;
     if (iframe) {
+      iframe.src = '';
       debug && console.log('Remove iframe:', iframe);    
       // Clean up dom
       document.body.removeChild(iframe);
@@ -151,6 +182,8 @@ var gotTestResult = function(data) {
 
     testDb.insert(data);
     nextStep();
+  } else if (data.log) {
+    console.debug('***** LOG CLIENT', data.client, 'TEST', data.test, '"' + data.message + '"');
   }
 };
 
@@ -211,6 +244,7 @@ var nextStep = function() {
 
       if (target.isClient) {
 
+        // XXX: Client src should not be loaded until its actually needed?
         var iframe = target.iframe.contentWindow;
 
         var msg = {
@@ -258,7 +292,11 @@ var nextStep = function() {
       currentTest++;
 
       if (currentTest < tests.length) {
-        startTest(currentTest);
+        Meteor.setTimeout(function() {
+          // Just wait half a sec before starting the next qa test
+          startTest(currentTest);
+
+        }, 200);
       } else {
 
         console.debug('////////////////////////////////////////////////////////////////////////////////');
@@ -323,7 +361,7 @@ var startTest = function(index) {
           }, 500);
         });
 
-        iframe.src = 'test/' + name;
+        iframe.src = 'test/' + index + '/' + name;
         debug && console.log('Added test/'+name);
 
         test.clients[name] = client;
@@ -342,6 +380,7 @@ var startTest = function(index) {
       };
     },
     Server: function(name, connection) {
+
       // Pretty name...
       name = name || defaultServerName;
 
@@ -539,8 +578,11 @@ if (Meteor.isServer) {
   Meteor.methods({
     'runTest': function(test, step) {
 
-      debug && console.log('Run test', test, step);
+      console.log('***** TEST', test, ' - STEP', step);
       return runSyncTask(test, step);
+    },
+    'clientConsoleLog': function(clientName, test, message) {
+      console.log('***** LOG TEST', test, 'CLIENT', clientName, '"' + message + '"');
     }
   });
 }
