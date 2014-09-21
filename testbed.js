@@ -82,7 +82,22 @@ GroundTest = {
       }), origin);      
     }
     
-  }
+  },
+  debug: function(/* arguments */) {
+
+    if (isClient) {
+      
+      var message = _.toArray(arguments).join(' ');
+      
+      parent.postMessage(JSON.stringify({
+        log: true,
+        test: testIndex,
+        client: clientName,
+        message: message
+      }), origin);      
+    }
+    
+  }  
 };
 
 
