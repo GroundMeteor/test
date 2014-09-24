@@ -66,6 +66,7 @@ GroundTest = {
   isMain: Meteor.isClient && !isClient,
   clientName: clientName,
   serverName: serverName,
+  index: testIndex,
   log: function(/* arguments */) {
 
     if (isClient) {
@@ -73,6 +74,8 @@ GroundTest = {
       var message = _.toArray(arguments).join(' ');
       
       Meteor.call('clientConsoleLog', clientName, testIndex, message);
+
+      console.log('TEST', testIndex, ' - CLIENT', clientName, message);
 
       parent.postMessage(JSON.stringify({
         log: true,
@@ -89,8 +92,10 @@ GroundTest = {
       
       var message = _.toArray(arguments).join(' ');
       
+      console.log('TEST', testIndex, ' - CLIENT', clientName, message);
+
       parent.postMessage(JSON.stringify({
-        log: true,
+        debug: true,
         test: testIndex,
         client: clientName,
         message: message
@@ -198,7 +203,9 @@ var gotTestResult = function(data) {
     testDb.insert(data);
     nextStep();
   } else if (data.log) {
-    console.debug('***** LOG CLIENT', data.client, 'TEST', data.test, '"' + data.message + '"');
+    console.debug('TEST', data.test, '- CLIENT', data.client, '- LOG', '"' + data.message + '"');
+  } else if (data.debug) {
+    console.debug('TEST', data.test, '- CLIENT', data.client, '- DEBUG', '"' + data.message + '"');
   }
 };
 
@@ -253,7 +260,7 @@ var nextStep = function() {
 
       var thisStep = test.steps[currentStep];
 
-      console.debug('***** STEP', currentStep, '"' + thisStep.title + '"');
+      console.debug('TEST', currentTest, '- STEP', currentStep, '-', '"' + thisStep.title + '"');
 
       var target = thisStep.target;
 
@@ -333,9 +340,9 @@ var startTest = function(index) {
   // Helper
   var test = tests[currentTest];
 
-  console.debug('////////////////////////////////////////////////////////////////////////////////');
-  console.debug('START TEST', index, '"' + test.name + '"');
-  console.debug('////////////////////////////////////////////////////////////////////////////////');
+  console.debug('TEST', index, '////////////////////////////////////////////////////////////////////////////////');
+  console.debug('TEST', index, 'START TEST', '"' + test.name + '"');
+  console.debug('TEST', index, '////////////////////////////////////////////////////////////////////////////////');
 
   // Count the steps in the test...
   test.f.apply({
@@ -593,11 +600,11 @@ if (Meteor.isServer) {
   Meteor.methods({
     'runTest': function(test, step) {
 
-      console.log('***** TEST', test, ' - STEP', step);
+      console.log('TEST', test, '- STEP', step);
       return runSyncTask(test, step);
     },
     'clientConsoleLog': function(clientName, test, message) {
-      console.log('***** LOG TEST', test, 'CLIENT', clientName, '"' + message + '"');
+      console.log('TEST', test, '- CLIENT', clientName, '- LOG', '"' + message + '"');
     }
   });
 }
