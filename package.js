@@ -5,9 +5,9 @@ Package.describe({
   git: "https://github.com/GroundMeteor/test.git"
 });
 
-Package.on_use(function (api) {
+Package.onUse(function (api) {
   if (api.versionsFrom) {
-    api.versionsFrom('METEOR@0.9.1');
+    api.versionsFrom('1.0');
     api.use('meteor-platform', ['client', 'server']);
 
   } else {
@@ -30,17 +30,17 @@ Package.on_use(function (api) {
   // api.use(['deps'], 'client');
   // //api.use([], 'server');
   // //api.use(['localstorage', 'ejson'], 'client');
-  api.add_files(['style.css', 'template.html'], 'client');
-  api.add_files('testbed.js', ['client', 'server']);
-  // api.add_files('groundDB.server.js', 'server');
+  api.addFiles(['style.css', 'template.html'], 'client');
+  api.addFiles('testbed.js', ['client', 'server']);
+  // api.addFiles('groundDB.server.js', 'server');
 });
 
-Package.on_test(function (api) {
+Package.onTest(function (api) {
   // api.use('grounddb', ['client']);
   // api.use('test-helpers', 'client');
   // api.use(['tinytest', 'underscore', 'ejson', 'ordered-dict',
   //          'random', 'deps']);
 
-  // api.add_files('groundDB.client.tests.js', 'client');
-  // api.add_files('groundDB.server.tests.js', 'server');
+  // api.addFiles('groundDB.client.tests.js', 'client');
+  // api.addFiles('groundDB.server.tests.js', 'server');
 });

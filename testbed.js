@@ -56,7 +56,7 @@ GroundTest = {
         failed: 0,
         done: false,
         index: index,
-        collapsed: true
+        collapsed: (Session.get('TEST' + index) == 'uncollapsed')?false: true
       });
 
     }
@@ -521,81 +521,92 @@ if (Meteor.isClient) {
 
   Template.test_results.events({
     'click .btnUncollapse': function() {
+      Session.set('TEST' + this.index, 'uncollapsed');
       testStatusDb.update({ _id: this._id }, { $set: { collapsed: false } });
     },
     'click .btnCollapse': function() {
+      Session.set('TEST' + this.index, 'collapsed');
       testStatusDb.update({ _id: this._id }, { $set: { collapsed: true } });
     },
   });
 
-  Template.test_results.collapseStyle = function() {
-    return (this.collapsed)? { style: 'display:none;' }:{ style: 'display: block;'};
-  };
+  Template.test_results.helpers({
+    tests: function() {
+      return testStatusDb.find({});
+    },
+    collapseStyle: function() {
+      return (this.collapsed)? { style: 'display:none;' }:{ style: 'display: block;'};
+    }
+  });
 
-  Template.listResults.clientName = function(t, c) {
-    return tests[t].clients[c].name;
-  };
+  Template.listResults.helpers({
+    
+    clientName: function(t, c) {
+      return tests[t].clients[c].name;
+    },
 
-  Template.listResults.testName = function(n) {
-    return tests[n].name;
-  };
+    testName: function(n) {
+      return tests[n].name;
+    },
 
-  Template.listResults.items = function() {
-    return testDb.find({ test: this.index });
-  };
-
-  Template.test_results.tests = function() {
-    return testStatusDb.find({});
-  };
-
-
-  Template.topbar.percentDone = function() {
-    var testCount = 0;
-    var inProgress = 0;
-
-    testStatusDb.find({}).forEach(function(test) {
-
-      if (test.steps) inProgress = testCount + ((test.success + test.failed) / test.steps);
-
-      testCount++;
-    });    
+    items: function() {
+      return testDb.find({ test: this.index });
+    }
+  });
 
 
-    var result = Math.round(100 * inProgress / testCount);
+  Template.topbar.helpers({
 
-    return result;
-  };  
+    percentDone: function() {
+      var testCount = 0;
+      var inProgress = 0;
 
-  Template.topbar.success = function() {
-    var total = 0;
-    testStatusDb.find({}).forEach(function(test) {
-      total += test.success;
-    });
-    return total;    
-  };
+      testStatusDb.find({}).forEach(function(test) {
 
-  Template.topbar.failed = function() {
-    var total = 0;
-    testStatusDb.find({}).forEach(function(test) {
-      total += test.failed;
-    });
-    return total;    
-  };
+        if (test.steps) inProgress = testCount + ((test.success + test.failed) / test.steps);
 
-  Template.topbar.total = function() {
-    var total = 0;
-    testStatusDb.find({}).forEach(function(test) {
-      total += test.steps;
-    });
-    return total;    
-  };
+        testCount++;
+      });    
+
+
+      var result = Math.round(100 * inProgress / testCount);
+
+      return result;
+    }, 
+
+    success: function() {
+      var total = 0;
+      testStatusDb.find({}).forEach(function(test) {
+        total += test.success;
+      });
+      return total;    
+    },
+
+    failed: function() {
+      var total = 0;
+      testStatusDb.find({}).forEach(function(test) {
+        total += test.failed;
+      });
+      return total;    
+    },
+
+    total: function() {
+      var total = 0;
+      testStatusDb.find({}).forEach(function(test) {
+        total += test.steps;
+      });
+      return total;    
+    }
+
+  });
+
 
 }
 
 
 if (Meteor.isServer) {
 
-  var runSyncTask = Meteor._wrapAsync(runAsyncTask);
+  var runSyncTask = Meteor.wrapAsync(runAsyncTask);
 
   Meteor.methods({
     'runTest': function(test, step) {
