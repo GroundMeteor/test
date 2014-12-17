@@ -6,13 +6,8 @@ Package.describe({
 });
 
 Package.onUse(function (api) {
-  if (api.versionsFrom) {
-    api.versionsFrom('1.0');
-    api.use('meteor-platform', ['client', 'server']);
-
-  } else {
-    api.use('standard-app-packages', ['client', 'server']);
-  }
+  api.versionsFrom('1.0');
+  api.use('meteor-platform', ['client', 'server']);
 
   api.export('GroundTest');
   // api.export && api.export('_gDB', ['client', 'server'], {testOnly: true});
