@@ -20,7 +20,7 @@ Package.onUse(function (api) {
   //   'ejson-minimax'
   //   ], ['client', 'server']);
 
-  api.use('bootstrap');
+  api.use('bootstrap@1.0.1');
 
   // api.use(['deps'], 'client');
   // //api.use([], 'server');
