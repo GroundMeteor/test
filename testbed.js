@@ -3,8 +3,9 @@ var serverName, clientName, testIndex;
 
 if (Meteor.isClient) {
 
-  if (typeof window.location == 'undefined')
+  if (typeof window.location === 'undefined') {
     throw new Error('Browser is not compatible with GroundTest - no "window.location"');
+  }
 
 
   // / == main test, /test/A == A
@@ -21,8 +22,8 @@ if (Meteor.isClient) {
 
   var origin = window.location.origin;
 
-  var testDb = new Meteor.Collection('_test_db', { connection: null });
-  var testStatusDb = new Meteor.Collection('_test_status_db', { connection: null });
+  var testDb = new Mongo.Collection('_test_db', { connection: null });
+  var testStatusDb = new Mongo.Collection('_test_status_db', { connection: null });
 
 } else {
 
@@ -36,8 +37,13 @@ var defaultServerName = 'L';
 var tests = [];
 
 var testArgs = function(where, title, func) {
-  if (title !== ''+title) throw new Error(where + ' test step needs name as first argument');
-  if (typeof func !== 'function') throw new Error(where + ' test step needs function as second argument');
+  if (title !== ''+title) {
+    throw new Error(where + ' test step needs name as first argument');
+  }
+
+  if (typeof func !== 'function') {
+    throw new Error(where + ' test step needs function as second argument');
+  }
 };
 
 // Define the scope
@@ -56,7 +62,7 @@ GroundTest = {
         failed: 0,
         done: false,
         index: index,
-        collapsed: (Session.get('TEST' + index) == 'uncollapsed')?false: true
+        collapsed: (Session.get('TEST' + index) === 'uncollapsed')?false: true
       });
 
     }
@@ -70,9 +76,9 @@ GroundTest = {
   log: function(/* arguments */) {
 
     if (isClient) {
-      
+
       var message = _.toArray(arguments).join(' ');
-      
+
       Meteor.call('clientConsoleLog', clientName, testIndex, message);
 
       console.log('TEST', testIndex, ' - CLIENT', clientName, message);
@@ -82,16 +88,16 @@ GroundTest = {
         test: testIndex,
         client: clientName,
         message: message
-      }), origin);      
+      }), origin);
     }
-    
+
   },
   debug: function(/* arguments */) {
 
     if (isClient) {
-      
+
       var message = _.toArray(arguments).join(' ');
-      
+
       console.log('TEST', testIndex, ' - CLIENT', clientName, message);
 
       parent.postMessage(JSON.stringify({
@@ -99,10 +105,10 @@ GroundTest = {
         test: testIndex,
         client: clientName,
         message: message
-      }), origin);      
+      }), origin);
     }
-    
-  }  
+
+  }
 };
 
 
@@ -110,16 +116,17 @@ if (isClient) {
   GroundTest.log('ONLINE');
 }
 
-var noop = function(f) {};
+var noop = function() {};
 
 var eachTest = function(f) {
-  if (typeof f !== 'function')
+  if (typeof f !== 'function') {
     throw new Error('eachTest requires Callback function');
+  }
 
   for (var t = 0; t < tests.length; t++) {
     // Callback
     f(tests[t], t);
-  };  
+  }
 };
 
 // wait counter
@@ -128,18 +135,17 @@ var waiting = 0;
 var resetTest = function(index) {
   var test = tests[index];
   // Iterate over children
-  for (var key in test.clients) {
-    var client = test.clients[key];
-
+  _.each(test.clients, function(client) {
     var iframe = client.iframe;
     if (iframe) {
       iframe.src = '';
-      debug && console.log('Remove iframe:', iframe);    
+      if (debug) {
+        console.log('Remove iframe:', iframe);
+      }
       // Clean up dom
       document.body.removeChild(iframe);
     }
-    
-  }
+  });
 
   waiting = 0;
 };
@@ -150,7 +156,7 @@ var runAsyncTask = function(test, step, callback) {
   var f = thisStep.f;
   var title = thisStep.title;
 
-  try {    
+  try {
     // Run the test function on the client
     f(function(txt) {
 
@@ -182,7 +188,7 @@ var runAsyncTask = function(test, step, callback) {
       server: serverName,
       client: clientName,
       title: title
-    };        
+    };
     // Call parent to report status about test run
     callback(null, msg);
   }
@@ -190,12 +196,14 @@ var runAsyncTask = function(test, step, callback) {
 
 var gotTestResult = function(data) {
   // Main communication
-  debug && console.log('Main got', data);
-  
+  if (debug) {
+    console.log('Main got', data);
+  }
+
   if (data.completed) {
 
     if (data.error) {
-      testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });          
+      testStatusDb.update({ index: data.test }, { $inc: { failed: 1 } });
     } else {
       testStatusDb.update({ index: data.test }, { $inc: { success: 1 } });
     }
@@ -213,26 +221,39 @@ if (Meteor.isClient) {
 
   window.addEventListener("message", function(event) {
     // Only this origin...
-    if (event.origin !== origin)
+    if (event.origin !== origin) {
       throw new Error('GroundTest requires same origin');
+    }
 
     // We always expect data object
     var data = event.data;
 
     // We dont care about empty data
-    if (!data)
+    if (!data) {
       return;
+    }
 
-    debug && console.log('test', data.test, 'step', data.step);
+    // Remove messages put in by Meteor...
+    if (/^Meteor\._setImmediate\./.test(data)) {
+      return;
+    }
+
+    if (debug) {
+      console.log('test', data.test, 'step', data.step);
+    }
 
     // event.data event.origin event.source
     if (isClient) {
       // Client communication
-      debug && console.log('Client "' + clientName + '" got', data);
+      if (debug) {
+        console.log('Client "' + clientName + '" got', data);
+      }
       if (data.run) {
 
         runAsyncTask(data.test, data.step, function(err, msg) {
-          debug && console.log('Client post', msg);
+          if (debug) {
+            console.log('Client post', msg);
+          }
           // Call parent to report status about test run
           parent.postMessage(JSON.stringify(msg), origin);
         });
@@ -241,8 +262,15 @@ if (Meteor.isClient) {
 
     } else {
       // Main communication
-      debug && console.log('Main got from client', data);
-      gotTestResult(JSON.parse(data));
+      if (debug) {
+        console.log('Main got from client', data);
+      }
+
+      try {
+        gotTestResult(JSON.parse(data));
+      } catch(err) {
+        console.error('Test: Failed to parse message:', data, 'Event:', event);
+      }
     }
   }, false);
 }
@@ -276,14 +304,16 @@ var nextStep = function() {
         };
 
 
-        debug && console.log('MESSAGE', msg, origin);
+        if (debug) {
+          console.log('MESSAGE', msg, origin);
+        }
 
         iframe.postMessage(msg, origin);
 
       }
 
       if (target.isServer) {
-        var test = currentTest;
+        var test = currentTest; // jshint ignore: line
         var step = currentStep;
         var title = thisStep.title;
         target.connection.call('runTest', test, step, function(error, data) {
@@ -296,8 +326,8 @@ var nextStep = function() {
               test: test,
               step: step,
               server: target.name,
-              title: title         
-            };            
+              title: title
+            };
           }
 
           gotTestResult(data);
@@ -307,7 +337,9 @@ var nextStep = function() {
       currentStep++;
 
     } else {
-      debug && console.log('Test ended');
+      if (debug) {
+        console.log('Test ended');
+      }
       testStatusDb.update({ index: currentTest }, { $set: { done: true } });
 
       resetTest(currentTest);
@@ -327,7 +359,7 @@ var nextStep = function() {
 
       }
     }
-    
+
   }, 0);
 
 };
@@ -371,7 +403,9 @@ var startTest = function(index) {
 
         iframe.addEventListener('load', function() {
           client.loaded = true;
-          debug && console.log('Client', name, 'loaded');
+          if (debug) {
+            console.log('Client', name, 'loaded');
+          }
 
           // Wait a bit
           Meteor.setTimeout(function() {
@@ -379,12 +413,16 @@ var startTest = function(index) {
             waiting--;
 
             // If done waiting for clients we start stepper
-            if (!waiting) nextStep();
+            if (!waiting) {
+              nextStep();
+            }
           }, 500);
         });
 
         iframe.src = 'test/' + index + '/' + name;
-        debug && console.log('Added test/'+name);
+        if (debug) {
+          console.log('Added test/'+name);
+        }
 
         test.clients[name] = client;
       }
@@ -397,8 +435,9 @@ var startTest = function(index) {
 
         // Store step
         test.steps.push({ title: title, target: target });
-        if (Meteor.isClient)
+        if (Meteor.isClient) {
           testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
+        }
       };
     },
     Server: function(name, connection) {
@@ -414,18 +453,21 @@ var startTest = function(index) {
           loaded: true,
         };
 
-        debug && console.log('Added test', name);
+        if (debug) {
+          console.log('Added test', name);
+        }
         test.clients[name] = server;
       }
 
-      var server = test.clients[name];
+      var server = test.clients[name]; // jshint ignore: line
 
       return function(title, stepFunction) {
         testArgs('Server', title, stepFunction);
 
         test.steps.push({ title: title, target: server });
-        if (Meteor.isClient)
+        if (Meteor.isClient) {
           testStatusDb.update({ index: test.index }, { $inc: { steps: 1 } });
+        }
       };
     }
   });
@@ -434,15 +476,17 @@ var startTest = function(index) {
 };
 
 var clientTestApp = function(currentName) {
-  debug && console.log('Client test app "' + currentName + '"');
+  if (debug) {
+    console.log('Client test app "' + currentName + '"');
+  }
 
-  eachTest(function(test, index) {
+  eachTest(function(test) {
     test.f.apply({
-      Client: function(name) {
+      Client: function(name /*, index */) {
         return function(title, stepFunction) {
           testArgs('Client', title, stepFunction);
 
-          if (name == currentName) {
+          if (name === currentName) {
             // Ok this step should run on this client
             test.steps.push({ title: title, f: stepFunction });
           } else {
@@ -451,13 +495,13 @@ var clientTestApp = function(currentName) {
           }
         };
       },
-      Server: function(name) {
+      Server: function(/* name */) {
         return function(title, stepFunction) {
           testArgs('Server', title, stepFunction);
 
           // Noop, server is going for this...
           test.steps.push({ title: title, f: noop });
-        }
+        };
       }
     });
   });
@@ -468,15 +512,17 @@ var serverTestApp = function(currentName) {
   // Make sure we have a pretty name
   currentName = currentName || defaultServerName;
 
-  debug && console.log('Server test app "' + currentName + '"');
+  if (debug) {
+    console.log('Server test app "' + currentName + '"');
+  }
 
-  eachTest(function(test, index) {
+  eachTest(function(test /*, index */) {
     test.f.apply({
-      Client: function(name) {
-        return function(title, stepFunction) {        
+      Client: function(/* name */) {
+        return function(title, stepFunction) {
           testArgs('Client', title, stepFunction);
           // Noop, clients is going for this...
-          test.steps.push({ title: title, f: noop });        
+          test.steps.push({ title: title, f: noop });
         };
       },
       Server: function(name) {
@@ -485,8 +531,8 @@ var serverTestApp = function(currentName) {
 
         return function(title, stepFunction) {
           testArgs('Server', title, stepFunction);
-          
-          if (name == currentName) {
+
+          if (name === currentName) {
             // Ok this step should run on this server
             test.steps.push({ title: title, f: stepFunction });
           } else {
@@ -502,7 +548,9 @@ var serverTestApp = function(currentName) {
 
 Meteor.startup(function() {
   if (Meteor.isClient) {
-    if (typeof document.body == 'undefined') throw new Error('I need somebody');
+    if (typeof document.body === 'undefined') {
+      throw new Error('I need somebody');
+    }
 
     if (isClient) {
       clientTestApp(clientName);
@@ -519,7 +567,7 @@ Meteor.startup(function() {
 
 if (Meteor.isClient) {
 
-  Template.test_results.events({
+  Template.test_results.events({ // jshint ignore: line
     'click .btnUncollapse': function() {
       Session.set('TEST' + this.index, 'uncollapsed');
       testStatusDb.update({ _id: this._id }, { $set: { collapsed: false } });
@@ -530,7 +578,7 @@ if (Meteor.isClient) {
     },
   });
 
-  Template.test_results.helpers({
+  Template.test_results.helpers({ // jshint ignore: line
     tests: function() {
       return testStatusDb.find({});
     },
@@ -540,7 +588,7 @@ if (Meteor.isClient) {
   });
 
   Template.listResults.helpers({
-    
+
     clientName: function(t, c) {
       return tests[t].clients[c].name;
     },
@@ -563,23 +611,25 @@ if (Meteor.isClient) {
 
       testStatusDb.find({}).forEach(function(test) {
 
-        if (test.steps) inProgress = testCount + ((test.success + test.failed) / test.steps);
+        if (test.steps) {
+          inProgress = testCount + ((test.success + test.failed) / test.steps);
+        }
 
         testCount++;
-      });    
+      });
 
 
       var result = Math.round(100 * inProgress / testCount);
 
       return result;
-    }, 
+    },
 
     success: function() {
       var total = 0;
       testStatusDb.find({}).forEach(function(test) {
         total += test.success;
       });
-      return total;    
+      return total;
     },
 
     failed: function() {
@@ -587,7 +637,7 @@ if (Meteor.isClient) {
       testStatusDb.find({}).forEach(function(test) {
         total += test.failed;
       });
-      return total;    
+      return total;
     },
 
     total: function() {
@@ -595,7 +645,7 @@ if (Meteor.isClient) {
       testStatusDb.find({}).forEach(function(test) {
         total += test.steps;
       });
-      return total;    
+      return total;
     }
 
   });
